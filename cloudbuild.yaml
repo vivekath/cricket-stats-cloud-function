@@ -1,0 +1,16 @@
+steps:
+- name: gcr.io/cloud-builders/gcloud
+  args:
+    - functions
+    - deploy
+    - load-data-bigquery
+    - --gen2
+    - --runtime=python312
+    - --region=asia-south1
+    - --source=.
+    - --entry-point=load_data_bigquery
+    - --trigger-event-filters=type=google.cloud.storage.object.v1.finalized
+    - --trigger-event-filters=bucket=cricbuzz-stats-08012026
+
+options:
+  logging: CLOUD_LOGGING_ONLY
