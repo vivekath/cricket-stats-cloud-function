@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
 
-def trigger_df_job(cloud_event,environment):   
+def load_data_bigquery(cloud_event,environment):   
  
     service = build('dataflow', 'v1b3')
     project = "quantum-episode-345713"
