@@ -1,7 +1,7 @@
 from googleapiclient.discovery import build
 import traceback
 
-def load_data_bigquery(event, context=None):   
+def load_data_bigquery(event):   
     try:
         # Handle both CloudEvent and dict
         if hasattr(event, "data"):
