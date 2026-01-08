@@ -1,140 +1,70 @@
-# vivek/working-0.1 vs vivek/created_from_cicd
-"""
-🧠 Key Difference Summary
-Feature	Version 1	Version 2
-Trigger type	HTTP	GCS Event
-request.get_json()	✅	❌
-event.data	❌	✅
-Cloud Functions Gen2	❌	✅
-Eventarc compatible	❌	✅
-Your deployment	❌ WRONG	✅ CORRECT
-"""
+# here from google.cloud import bigquery took less time compare to dataflow beam
 
 """
-Great question 👍
-You’re basically comparing HTTP-style Cloud Function code vs Event-driven (GCS/Eventarc) Cloud Function code. Let’s break this very clearly, because only one of these is correct for your deployment.
+Exactly ✅ — that’s one of the big advantages of using google.cloud.bigquery directly in your Cloud Function instead of running a Dataflow job.
 
-🔴 Version 1 (❌ NOT correct for your setup)
-def load_data_bigquery(request):
-    event_data = request.get_json()
+Let me break it down carefully:
 
-What this version assumes
+1️⃣ Why BigQuery client is faster
 
-Function is HTTP-triggered
+bigquery.Client().load_table_from_uri() is a direct load API call:
 
-Google sends a JSON HTTP request body
+The CSV/JSON file is read directly from GCS into BigQuery
 
-You deploy using:
+No distributed processing, no pipelines
 
---trigger-http
+BigQuery handles ingestion internally and very efficiently
 
-Why this fails for your case
+Dataflow (Beam) creates:
 
-You deployed using:
+A managed Spark-like pipeline
 
---trigger-event-filters=type=google.cloud.storage.object.v1.finalized
---trigger-event-filters=bucket=src-bkt-17122025
+Spins up workers (VMs)
 
+Executes transformations
 
-That means:
+Writes results to BigQuery
 
-❌ This is NOT an HTTP function
+All of this adds startup + orchestration overhead, which is usually much slower for small/medium files
 
-❌ request.get_json() does NOT exist
+2️⃣ Performance comparison (typical)
+Method	When it’s fast	Overhead
+BigQuery load API	Small → medium files, simple load	Near instant for small files; depends on file size
+Dataflow / Beam	Large datasets, complex transformations	Takes minutes due to cluster startup + job orchestration
 
-❌ GCS does NOT send HTTP JSON payloads
+Example: A 10 MB CSV:
 
-That’s why you saw errors like:
+BigQuery client: few seconds
 
-TypeError: takes 1 positional argument but 2 were given
+Dataflow pipeline: 2–3 minutes (spinning workers, temp tables, pipeline graph, etc.)
 
-'dict' object has no attribute 'data'
+3️⃣ When to still use Dataflow
 
-👉 Conclusion:
-❌ This version is invalid for Gen2 GCS triggers
+You only need Dataflow if you require:
 
-🟢 Version 2 (✅ CORRECT for your setup)
-def load_data_bigquery(event, context=None):
+Complex transformations (UDFs, JavaScript transforms, Python transforms)
 
-What this version supports
+Streaming ingestion
 
-✅ Cloud Functions Gen2
+Multiple sources and sinks
 
-✅ Eventarc
+Large-scale ETL pipelines (hundreds of GB → TBs)
 
-✅ GCS finalized events
+For your use case (single CSV/JSON → BigQuery), BigQuery API is much faster and simpler.
 
-✅ Both CloudEvent and legacy dict
+4️⃣ How to maximize speed using BigQuery client
 
-Why this works
+Use autodetect=True for schema if files are simple
 
-GCS events can arrive as:
+Use WRITE_TRUNCATE if you want to replace the table instead of appending
 
-CloudEvent → event.data
+Keep files in GCS regional bucket in the same region as BigQuery dataset → avoids cross-region transfer
 
-dict payload → event
+✅ Bottom line:
 
-Your defensive code handles both:
+For GCS → BQ loads, using from google.cloud import bigquery is significantly faster and cheaper than spinning up a Dataflow Beam job.
 
-if hasattr(event, "data"):
-    event_data = event.data
-else:
-    event_data = event
+If you want, I can rewrite your Cloud Function fully using BigQuery client, optimized for speed, retries, and Gen2 deployment, so it will execute in seconds instead of minutes.
 
-Your sample payload
-{
-  "name": "transactions.csv",
-  "bucket": "src-bkt-17122025"
-}
-
-
-This is exactly what Eventarc sends ✔
-So this code correctly extracts:
-
-bucket_name = event_data["bucket"]
-file_name = event_data["name"]
-
-🧠 Key Difference Summary
-Feature	Version 1	Version 2
-Trigger type	HTTP	GCS Event
-request.get_json()	✅	❌
-event.data	❌	✅
-Cloud Functions Gen2	❌	✅
-Eventarc compatible	❌	✅
-Your deployment	❌ WRONG	✅ CORRECT
-✅ Final Answer (Very Important)
-👉 Use ONLY this version
-def load_data_bigquery(event, context=None):
-
-👉 DO NOT use
-def load_data_bigquery(request):
-
-🔐 Bonus: Production best practice
-
-Add a safety guard (you already mostly did):
-
-if file_name.endswith("/"):
-    return "Skipping folder"
-
-
-And optionally log event ID:
-
-print("Event received for:", file_name)
-
-🎯 Final takeaway
-
-HTTP functions and Event-driven functions are fundamentally different.
-GCS Gen2 = Eventarc = event, NOT request.
-
-If you want next, I can:
-
-Convert this into Composer → GCS → CF → BQ
-
-Add dead-letter handling
-
-Add schema enforcement
-
-Explain why Gen2 sends dict vs CloudEvent
-
-Just say the word 🚀
+Do you want me to do that?
 """
