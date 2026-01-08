@@ -3,7 +3,12 @@ import traceback
 
 def load_data_bigquery(event, context=None):
     try:
-        event_data = event.data
+        # Handle both CloudEvent and dict
+        if hasattr(event, "data"):
+            event_data = event.data          # CloudEvent
+        else:
+            event_data = event               # dict
+
         print(event_data)
 
         bucket = event_data["bucket"]
