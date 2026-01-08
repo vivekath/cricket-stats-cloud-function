@@ -1,7 +1,7 @@
 from googleapiclient.discovery import build
 import traceback
 
-def load_data_bigquery(event):
+def load_data_bigquery(event, context=None):
     try:
         event_data = event.data
         print(event_data)
