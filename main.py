@@ -1,6 +1,5 @@
 from googleapiclient.discovery import build
 
-
 def trigger_df_job(cloud_event,environment):   
  
     service = build('dataflow', 'v1b3')
